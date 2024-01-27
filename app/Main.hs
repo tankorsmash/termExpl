@@ -5,6 +5,8 @@
 module Main where
 
 import Control.Monad (void)
+import Control.Monad.State (modify)
+import qualified Data.Vector as Vec
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid
 #endif
@@ -28,15 +30,19 @@ import Brick.Widgets.Core (
     (<+>),
     (<=>),
  )
+import qualified Brick.Widgets.List as L
 import qualified Brick.Widgets.ProgressBar as P
 
 import Brick.Main (renderWidget)
 
-data MyAppState n = MyAppState {_x, _y, _z :: Float}
+-- data MyAppState n = MyAppState {_selectedIndex :: Int}
+data MyAppState n = MyAppState {_nameList :: L.List WidgetName String }
+
+data WidgetName = Name1 | Name2 | Name3 deriving (Ord, Show, Eq)
 
 makeLenses ''MyAppState
 
-drawUI :: MyAppState () -> [Widget ()]
+drawUI :: MyAppState () -> [Widget WidgetName]
 drawUI p = [ui]
   where
     -- use mapAttrNames
@@ -50,68 +56,25 @@ drawUI p = [ui]
             (bar prog)
     lbl c = Just $ show $ fromEnum $ c * 100
     bar v = P.progressBar (lbl v) v
-    ui =
-        (str "C: " <+> whiteBar 0.93)
-            <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
+    -- ui =
+    --     (str "C: " <+> whiteBar 0.93)
+    --         <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
+    drawList isSelected element =
+        let sel = if isSelected then " > " else "   "
+         in str $ sel ++ element
+    ui = L.renderList drawList True (_nameList p)
 
-oldDrawUI :: MyAppState () -> [Widget ()]
-oldDrawUI p = [ui]
-  where
-    -- use mapAttrNames
-    whiteBar prog =
-        updateAttrMap
-            ( A.mapAttrNames
-                [ (xDoneAttr, P.progressCompleteAttr)
-                , (xToDoAttr, P.progressIncompleteAttr)
-                ]
-            )
-            (bar prog)
-    xBar =
-        updateAttrMap
-            ( A.mapAttrNames
-                [ (xDoneAttr, P.progressCompleteAttr)
-                , (xToDoAttr, P.progressIncompleteAttr)
-                ]
-            )
-            $ bar
-            $ _x p
-    -- or use individual mapAttrName calls
-    yBar =
-        updateAttrMap
-            ( A.mapAttrName yDoneAttr P.progressCompleteAttr
-                . A.mapAttrName yToDoAttr P.progressIncompleteAttr
-            )
-            $ bar
-            $ _y p
-    -- or use overrideAttr calls
-    zBar =
-        overrideAttr P.progressCompleteAttr zDoneAttr $
-            overrideAttr P.progressIncompleteAttr zToDoAttr $
-                bar $
-                    _z p
-
-    lbl c = Just $ show $ fromEnum $ c * 100
-    bar v = P.progressBar (lbl v) v
-    ui =
-        (str "X: " <+> xBar)
-            <=> (str "Y: " <+> yBar)
-            <=> (str "Z: " <+> zBar)
-            <=> (str "C: " <+> whiteBar 0.93)
-            <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
-
-appEvent :: T.BrickEvent () e -> T.EventM () (MyAppState ()) ()
+appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ()) ()
 appEvent (T.VtyEvent e) =
-    let valid = clamp (0.0 :: Float) 1.0
-     in case e of
-            V.EvKey (V.KChar 'x') [] -> x %= valid . (+ 0.05)
-            V.EvKey (V.KChar 'y') [] -> y %= valid . (+ 0.03)
-            V.EvKey (V.KChar 'z') [] -> z %= valid . (+ 0.02)
-            V.EvKey (V.KChar 'q') [] -> M.halt
-            _ -> return ()
+    case e of
+        -- V.EvKey (V.KChar 'j') [] -> selectedIndex .= 1
+        -- V.EvKey (V.KChar 'k') [] -> selectedIndex .= 0
+        V.EvKey (V.KChar 'q') [] -> M.halt
+        evt -> T.zoom nameList $ L.handleListEvent evt
 appEvent _ = return ()
 
 initialState :: MyAppState ()
-initialState = MyAppState 0.25 0.18 0.63
+initialState = MyAppState $ L.list Name1 (Vec.fromList ["james", "john", "jim", "jesus"]) 1
 
 theBaseAttr :: A.AttrName
 theBaseAttr = A.attrName "theBase"
@@ -141,7 +104,7 @@ theMap =
         , (P.progressIncompleteAttr, fg V.yellow)
         ]
 
-theApp :: M.App (MyAppState ()) e ()
+theApp :: M.App (MyAppState ()) e WidgetName
 theApp =
     M.App
         { M.appDraw = drawUI
