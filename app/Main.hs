@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
@@ -52,10 +52,11 @@ drawList isSelected element =
 drawUI :: MyAppState () -> [Widget WidgetName]
 drawUI p = [ui]
   where
+    progressPct = fromIntegral selectedIndex / fromIntegral totalEls
     ui =
         V.hBox
             [ listSelection
-            , V.hBox [whiteBar ((fromIntegral selectedIndex ::Float) / (fromIntegral totalEls :: Float)), str "horiz text"]
+            , V.hBox [whiteBar progressPct, str "horiz text"]
             , V.vBox [str "vert text 1", str "vert text 2"]
             ]
     -- use mapAttrNames
@@ -72,11 +73,11 @@ drawUI p = [ui]
     bar v = P.progressBar (lbl v) v
 
     theList = _nameList p
-    selectedEl = ((++) "You have selected: ") . snd <$> L.listSelectedElement theList
-    selectedIndex = (fromMaybe (-1)) $ fst <$> L.listSelectedElement theList
+    selectedEl = (++) "You have selected: " . snd <$> L.listSelectedElement theList
+    selectedIndex = maybe (-1) fst $ L.listSelectedElement theList
     totalEls = length $ L.listElements theList
     listSelection =
-        L.renderList drawList True theList
+        V.withAttr selectListAttr (L.renderList drawList True theList)
             <=> str (fromMaybe "None selected" selectedEl)
 
 appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ()) ()
@@ -106,6 +107,9 @@ zDoneAttr, zToDoAttr :: A.AttrName
 zDoneAttr = theBaseAttr <> A.attrName "Z:done"
 zToDoAttr = theBaseAttr <> A.attrName "Z:remaining"
 
+selectListAttr :: A.AttrName
+selectListAttr = A.attrName "selectListAttr"
+
 theMap :: A.AttrMap
 theMap =
     A.attrMap
@@ -116,6 +120,7 @@ theMap =
         , (yDoneAttr, V.magenta `on` V.yellow)
         , (zDoneAttr, V.blue `on` V.green)
         , (zToDoAttr, V.blue `on` V.red)
+        , (selectListAttr, V.red `on` V.green)
         , (P.progressIncompleteAttr, fg V.yellow)
         ]
 
