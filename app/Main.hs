@@ -70,7 +70,7 @@ appEvent (T.VtyEvent e) =
         -- V.EvKey (V.KChar 'j') [] -> selectedIndex .= 1
         -- V.EvKey (V.KChar 'k') [] -> selectedIndex .= 0
         V.EvKey (V.KChar 'q') [] -> M.halt
-        evt -> T.zoom nameList $ L.handleListEvent evt
+        evt -> T.zoom nameList $ L.handleListEventVi L.handleListEvent evt
 appEvent _ = return ()
 
 initialState :: MyAppState ()
