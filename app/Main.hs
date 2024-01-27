@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
@@ -33,18 +34,30 @@ import Brick.Widgets.Core (
 import qualified Brick.Widgets.List as L
 import qualified Brick.Widgets.ProgressBar as P
 
+import qualified Brick as V
 import Brick.Main (renderWidget)
+import Data.Maybe (fromMaybe)
 
 -- data MyAppState n = MyAppState {_selectedIndex :: Int}
-data MyAppState n = MyAppState {_nameList :: L.List WidgetName String }
+data MyAppState n = MyAppState {_nameList :: L.List WidgetName String}
 
 data WidgetName = Name1 | Name2 | Name3 deriving (Ord, Show, Eq)
 
 makeLenses ''MyAppState
 
+drawList isSelected element =
+    let sel = if isSelected then " > " else "   "
+     in str $ sel ++ element
+
 drawUI :: MyAppState () -> [Widget WidgetName]
 drawUI p = [ui]
   where
+    ui =
+        V.hBox
+            [ listSelection
+            , V.hBox [whiteBar ((fromIntegral selectedIndex ::Float) / (fromIntegral totalEls :: Float)), str "horiz text"]
+            , V.vBox [str "vert text 1", str "vert text 2"]
+            ]
     -- use mapAttrNames
     whiteBar prog =
         updateAttrMap
@@ -54,15 +67,17 @@ drawUI p = [ui]
                 ]
             )
             (bar prog)
+
     lbl c = Just $ show $ fromEnum $ c * 100
     bar v = P.progressBar (lbl v) v
-    -- ui =
-    --     (str "C: " <+> whiteBar 0.93)
-    --         <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
-    drawList isSelected element =
-        let sel = if isSelected then " > " else "   "
-         in str $ sel ++ element
-    ui = L.renderList drawList True (_nameList p)
+
+    theList = _nameList p
+    selectedEl = ((++) "You have selected: ") . snd <$> L.listSelectedElement theList
+    selectedIndex = (fromMaybe (-1)) $ fst <$> L.listSelectedElement theList
+    totalEls = length $ L.listElements theList
+    listSelection =
+        L.renderList drawList True theList
+            <=> str (fromMaybe "None selected" selectedEl)
 
 appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ()) ()
 appEvent (T.VtyEvent e) =
