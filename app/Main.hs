@@ -1,8 +1,4 @@
 {-# LANGUAGE CPP #-}
--- module Main where
---
--- main :: IO ()
--- main = putStrLn "Hello, Haskell!"
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -44,6 +40,32 @@ drawUI :: MyAppState () -> [Widget ()]
 drawUI p = [ui]
   where
     -- use mapAttrNames
+    whiteBar prog =
+        updateAttrMap
+            ( A.mapAttrNames
+                [ (xDoneAttr, P.progressCompleteAttr)
+                , (xToDoAttr, P.progressIncompleteAttr)
+                ]
+            )
+            (bar prog)
+    lbl c = Just $ show $ fromEnum $ c * 100
+    bar v = P.progressBar (lbl v) v
+    ui =
+        (str "C: " <+> whiteBar 0.93)
+            <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
+
+oldDrawUI :: MyAppState () -> [Widget ()]
+oldDrawUI p = [ui]
+  where
+    -- use mapAttrNames
+    whiteBar prog =
+        updateAttrMap
+            ( A.mapAttrNames
+                [ (xDoneAttr, P.progressCompleteAttr)
+                , (xToDoAttr, P.progressIncompleteAttr)
+                ]
+            )
+            (bar prog)
     xBar =
         updateAttrMap
             ( A.mapAttrNames
@@ -74,7 +96,7 @@ drawUI p = [ui]
         (str "X: " <+> xBar)
             <=> (str "Y: " <+> yBar)
             <=> (str "Z: " <+> zBar)
-            <=> (str "" <+> bar 10)
+            <=> (str "C: " <+> whiteBar 0.93)
             <=> str "Hit 'x', 'y', or 's' to advance progress, or 'q' to quit"
 
 appEvent :: T.BrickEvent () e -> T.EventM () (MyAppState ()) ()
