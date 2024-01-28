@@ -8,7 +8,7 @@ module Main where
 import System.IO (hFlush, stdout)
 
 import Control.Monad (void)
-import Control.Monad.State (modify, liftIO)
+import Control.Monad.State (liftIO, modify)
 import qualified Data.Vector as Vec
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid
@@ -26,6 +26,8 @@ import Brick.Types (
  )
 import qualified Brick.Types as T
 import Brick.Util (bg, clamp, fg, on)
+import qualified Brick.Widgets.Border as WB
+import qualified Brick.Widgets.Border.Style as BS
 import qualified Brick.Widgets.Center as WC
 import Brick.Widgets.Core (
     overrideAttr,
@@ -66,17 +68,18 @@ makeLenses ''MyAppState
 drawList :: Bool -> ProjectPair -> Widget WidgetName
 drawList isSelected (projectName, projectPath, projectDescription) =
     if isSelected
-        then V.withAttr theBaseAttr (str $ " > " ++ projectName)
+        then str " > " <+> V.withAttr selectedListElementAttr (str projectName)
         else str $ "   " ++ projectName
 
 drawUI :: MyAppState ReturnType -> [Widget WidgetName]
-drawUI p = [ui]
+drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
   where
     progressPct = fromIntegral selectedIndex / fromIntegral totalEls
     ui =
         V.hBox
             [ listSelection
-                <=> V.hBox [whiteBar progressPct, str "horiz text"]
+                -- <=> V.hBox [whiteBar progressPct, str "horiz text"]
+                <=> V.hBox [whiteBar progressPct]
             ]
     -- use mapAttrNames
     whiteBar prog =
@@ -94,20 +97,22 @@ drawUI p = [ui]
     theList = _nameList p
     formattedSelection =
         ( \(projectName, projectPath, projectDescription) ->
-            V.withAttr selectedProjectName (str projectName)
-                <=> str " "
-                <=> V.withAttr theBaseAttr (str projectPath)
-                <=> V.withAttr selectedProjectDescription (str projectDescription)
+            WB.border $
+                (V.withAttr selectedProjectName . WC.hCenter) (str projectName)
+                    <=> str " "
+                    <=> V.withAttr theBaseAttr (str projectPath)
+                    <=> str " "
+                    <=> (V.withAttr selectedProjectDescription $ str projectDescription)
         )
             . snd
             <$> L.listSelectedElement theList
+
     selectedIndex = maybe (-1) fst $ L.listSelectedElement theList
     totalEls = length $ L.listElements theList
     listSelection =
         V.vLimitPercent 50 $
-            V.withAttr selectListAttr (L.renderList drawList True theList)
+            (V.withAttr selectListAttr . WB.border $ L.renderList drawList True theList)
                 <+> fromMaybe (str "None selected") formattedSelection
-
 
 appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ReturnType) ()
 appEvent (T.VtyEvent e) =
@@ -116,7 +121,7 @@ appEvent (T.VtyEvent e) =
         -- V.EvKey (V.KChar 'k') [] -> selectedIndex .= 0
         V.EvKey (V.KChar 'q') [] -> M.halt
         V.EvKey V.KEnter [] -> do
-                M.halt
+            M.halt
         evt -> T.zoom nameList $ L.handleListEventVi L.handleListEvent evt
 appEvent _ = return ()
 
@@ -126,22 +131,15 @@ initialState = MyAppState $ L.list Name1 (Vec.fromList projects) 1
 theBaseAttr :: A.AttrName
 theBaseAttr = A.attrName "theBase"
 
+selectListAttr :: A.AttrName
+selectListAttr = A.attrName "selectListAttr"
+selectedListElementAttr = A.attrName "selectedListElementAttr"
+selectedProjectName = A.attrName "selectedProjectName"
+selectedProjectDescription = A.attrName "selectedProjectDescription"
+
 xDoneAttr, xToDoAttr :: A.AttrName
 xDoneAttr = theBaseAttr <> A.attrName "X:done"
 xToDoAttr = theBaseAttr <> A.attrName "X:remaining"
-
-yDoneAttr, yToDoAttr :: A.AttrName
-yDoneAttr = theBaseAttr <> A.attrName "Y:done"
-yToDoAttr = theBaseAttr <> A.attrName "Y:remaining"
-
-zDoneAttr, zToDoAttr :: A.AttrName
-zDoneAttr = theBaseAttr <> A.attrName "Z:done"
-zToDoAttr = theBaseAttr <> A.attrName "Z:remaining"
-
-selectListAttr :: A.AttrName
-selectListAttr = A.attrName "selectListAttr"
-selectedProjectName = A.attrName "selectedProjectName"
-selectedProjectDescription = A.attrName "selectedProjectDescription"
 
 theMap :: A.AttrMap
 theMap =
@@ -150,12 +148,10 @@ theMap =
         [ (theBaseAttr, bg V.brightBlack)
         , (xDoneAttr, V.black `on` V.white)
         , (xToDoAttr, V.white `on` V.black)
-        , (yDoneAttr, V.magenta `on` V.yellow)
-        , (zDoneAttr, V.blue `on` V.green)
-        , (zToDoAttr, V.blue `on` V.red)
-        , (selectListAttr, V.red `on` V.green)
-        , (selectedProjectName, V.withStyle (fg V.blue) V.italic)
-        , (selectedProjectDescription, V.style V.standout)
+        , (selectListAttr, V.black `on` V.white)
+        , (selectedListElementAttr, V.black `on` V.brightCyan)
+        , (selectedProjectName, V.withStyle (fg V.green) V.underline)
+        , (selectedProjectDescription, V.style V.italic)
         , (P.progressIncompleteAttr, fg V.yellow)
         ]
 
@@ -182,7 +178,7 @@ main :: IO ()
 main = do
     appState <- M.defaultMain theApp initialState
     let myList = view nameList appState
-    let (projectName, projectPath, projectDescription)   = maybe noProject snd $ L.listSelectedElement myList
+    let (projectName, projectPath, projectDescription) = maybe noProject snd $ L.listSelectedElement myList
     writeFile "/tmp/haskell_output" projectPath
 
 -- main = putStrLn "Hello, Haskell!"
