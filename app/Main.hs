@@ -181,7 +181,7 @@ main = do
     appState <- M.defaultMain theApp initialState
     let myList = view nameList appState
     let (projectName, projectPath, projectDescription)   = maybe noProject snd $ L.listSelectedElement myList
-    print projectPath
+    writeFile "/tmp/haskell_output" projectPath
 
 -- main = putStrLn "Hello, Haskell!"
 -- main = qwe
