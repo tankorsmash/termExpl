@@ -43,19 +43,23 @@ import qualified Brick as V
 import Brick.Main (renderWidget)
 import Data.Maybe (fromMaybe)
 
-type ProjectPair = (String, FilePath, String)
+data ProjectPair = ProjectPair
+    { _projectName :: !String
+    , _projectPath :: !FilePath
+    , _projectDescription :: !String
+    }
 
 type ReturnType = [Char]
 
 noProject :: ProjectPair
-noProject = ("No project selected", "", "")
+noProject = ProjectPair "No project selected" "" ""
 
 projects :: [ProjectPair]
 projects =
-    [ ("weekend", "/home/joshb/code_wsl/haskell/weekend", "Haskell Discord Bot")
-    , ("uiua aoc", "/home/joshb/code_wsl/uiua/aoc_2023/", "Advent of Code 2023 in Uiua")
-    , ("zig", "/home/joshb/code_wsl/zig/test_zigg/", "An investigation into Zig")
-    , ("termExpl", "/home/joshb/code_wsl/haskell/termExpl/", "A project setup")
+    [ ProjectPair "weekend" "/home/joshb/code_wsl/haskell/weekend" "Haskell Discord Bot"
+    , ProjectPair "uiua aoc" "/home/joshb/code_wsl/uiua/aoc_2023/" "Advent of Code 2023 in Uiua"
+    , ProjectPair "zig" "/home/joshb/code_wsl/zig/test_zigg/" "An investigation into Zig"
+    , ProjectPair "termExpl" "/home/joshb/code_wsl/haskell/termExpl/" "A project setup"
     ]
 
 -- data MyAppState n = MyAppState {_selectedIndex :: Int}
@@ -64,12 +68,13 @@ newtype MyAppState n = MyAppState {_nameList :: L.List WidgetName ProjectPair}
 data WidgetName = Name1 | Name2 | Name3 deriving (Ord, Show, Eq)
 
 makeLenses ''MyAppState
+makeLenses ''ProjectPair
 
 drawList :: Bool -> ProjectPair -> Widget WidgetName
-drawList isSelected (projectName, projectPath, projectDescription) =
+drawList isSelected projectPair =
     if isSelected
-        then str " > " <+> V.withAttr selectedListElementAttr (str projectName)
-        else str $ "   " ++ projectName
+        then str " > " <+> V.withAttr selectedListElementAttr (str $ view projectName projectPair)
+        else str $ "   " ++ view projectName projectPair
 
 drawUI :: MyAppState ReturnType -> [Widget WidgetName]
 drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
@@ -96,13 +101,13 @@ drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
 
     theList = _nameList p
     formattedSelection =
-        ( \(projectName, projectPath, projectDescription) ->
+        ( \projectPair ->
             WB.border $
-                (V.withAttr selectedProjectName . WC.hCenter) (str projectName)
+                (V.withAttr selectedProjectName . WC.hCenter) (str $ view projectName projectPair)
                     <=> str " "
-                    <=> V.withAttr theBaseAttr (str projectPath)
+                    <=> V.withAttr theBaseAttr (str $ view projectPath projectPair)
                     <=> str " "
-                    <=> (V.withAttr selectedProjectDescription $ str projectDescription)
+                    <=> (V.withAttr selectedProjectDescription $ str $ view projectDescription projectPair)
         )
             . snd
             <$> L.listSelectedElement theList
@@ -178,8 +183,8 @@ main :: IO ()
 main = do
     appState <- M.defaultMain theApp initialState
     let myList = view nameList appState
-    let (projectName, projectPath, projectDescription) = maybe noProject snd $ L.listSelectedElement myList
-    writeFile "/tmp/haskell_output" projectPath
+    let projectPair = maybe noProject snd $ L.listSelectedElement myList
+    writeFile "/tmp/haskell_output" $ view projectPath projectPair
 
 -- main = putStrLn "Hello, Haskell!"
 -- main = tempDrawUi
