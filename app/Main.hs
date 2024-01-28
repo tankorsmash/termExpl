@@ -95,6 +95,7 @@ drawUI p = [ui]
     formattedSelection =
         ( \(projectName, projectPath, projectDescription) ->
             V.withAttr selectedProjectName (str projectName)
+                <=> str " "
                 <=> V.withAttr theBaseAttr (str projectPath)
                 <=> V.withAttr selectedProjectDescription (str projectDescription)
         )
@@ -105,7 +106,7 @@ drawUI p = [ui]
     listSelection =
         V.vLimitPercent 50 $
             V.withAttr selectListAttr (L.renderList drawList True theList)
-                <=> fromMaybe (str "None selected") formattedSelection
+                <+> fromMaybe (str "None selected") formattedSelection
 
 
 appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ReturnType) ()
