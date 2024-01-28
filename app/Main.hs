@@ -170,7 +170,7 @@ theApp =
 region :: V.DisplayRegion
 region = (30, 10)
 
-qwe = do
+tempDrawUi = do
     vty <- mkVty V.defaultConfig
     -- ctx <- V.displayContext _outp region
     -- ( V.outputPicture ctx ) renderWidget Nothing (drawUI initialState) region
@@ -184,4 +184,4 @@ main = do
     writeFile "/tmp/haskell_output" projectPath
 
 -- main = putStrLn "Hello, Haskell!"
--- main = qwe
+-- main = tempDrawUi
