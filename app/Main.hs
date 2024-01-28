@@ -43,7 +43,7 @@ import qualified Brick as V
 import Brick.Main (renderWidget)
 import Data.Maybe (fromMaybe)
 
-data ProjectPair = ProjectPair
+data ProjectInfo = ProjectInfo
     { _projectName :: !String
     , _projectPath :: !FilePath
     , _projectDescription :: !String
@@ -51,30 +51,30 @@ data ProjectPair = ProjectPair
 
 type ReturnType = [Char]
 
-noProject :: ProjectPair
-noProject = ProjectPair "No project selected" "" ""
+noProject :: ProjectInfo
+noProject = ProjectInfo "No project selected" "" ""
 
-projects :: [ProjectPair]
+projects :: [ProjectInfo]
 projects =
-    [ ProjectPair "weekend" "/home/joshb/code_wsl/haskell/weekend" "Haskell Discord Bot"
-    , ProjectPair "uiua aoc" "/home/joshb/code_wsl/uiua/aoc_2023/" "Advent of Code 2023 in Uiua"
-    , ProjectPair "zig" "/home/joshb/code_wsl/zig/test_zigg/" "An investigation into Zig"
-    , ProjectPair "termExpl" "/home/joshb/code_wsl/haskell/termExpl/" "A project setup"
+    [ ProjectInfo "weekend" "/home/joshb/code_wsl/haskell/weekend" "Haskell Discord Bot"
+    , ProjectInfo "uiua aoc" "/home/joshb/code_wsl/uiua/aoc_2023/" "Advent of Code 2023 in Uiua"
+    , ProjectInfo "zig" "/home/joshb/code_wsl/zig/test_zigg/" "An investigation into Zig"
+    , ProjectInfo "termExpl" "/home/joshb/code_wsl/haskell/termExpl/" "A project setup"
     ]
 
 -- data MyAppState n = MyAppState {_selectedIndex :: Int}
-newtype MyAppState n = MyAppState {_nameList :: L.List WidgetName ProjectPair}
+newtype MyAppState n = MyAppState {_nameList :: L.List WidgetName ProjectInfo}
 
 data WidgetName = Name1 | Name2 | Name3 deriving (Ord, Show, Eq)
 
 makeLenses ''MyAppState
-makeLenses ''ProjectPair
+makeLenses ''ProjectInfo
 
-drawList :: Bool -> ProjectPair -> Widget WidgetName
-drawList isSelected projectPair =
+drawList :: Bool -> ProjectInfo -> Widget WidgetName
+drawList isSelected projectInfo =
     if isSelected
-        then str " > " <+> V.withAttr selectedListElementAttr (str $ view projectName projectPair)
-        else str $ "   " ++ view projectName projectPair
+        then str " > " <+> V.withAttr selectedListElementAttr (str $ view projectName projectInfo)
+        else str $ "   " ++ view projectName projectInfo
 
 drawUI :: MyAppState ReturnType -> [Widget WidgetName]
 drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
@@ -101,13 +101,13 @@ drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
 
     theList = _nameList p
     formattedSelection =
-        ( \projectPair ->
+        ( \projectInfo ->
             WB.border $
-                (V.withAttr selectedProjectName . WC.hCenter) (str $ view projectName projectPair)
+                (V.withAttr selectedProjectName . WC.hCenter) (str $ view projectName projectInfo)
                     <=> str " "
-                    <=> V.withAttr theBaseAttr (str $ view projectPath projectPair)
+                    <=> V.withAttr theBaseAttr (str $ view projectPath projectInfo)
                     <=> str " "
-                    <=> (V.withAttr selectedProjectDescription $ str $ view projectDescription projectPair)
+                    <=> (V.withAttr selectedProjectDescription $ str $ view projectDescription projectInfo)
         )
             . snd
             <$> L.listSelectedElement theList
@@ -175,16 +175,11 @@ region = (30, 10)
 
 tempDrawUi = do
     vty <- mkVty V.defaultConfig
-    -- ctx <- V.displayContext _outp region
-    -- ( V.outputPicture ctx ) renderWidget Nothing (drawUI initialState) region
     V.update vty $ renderWidget Nothing (drawUI initialState) region
 
 main :: IO ()
 main = do
     appState <- M.defaultMain theApp initialState
     let myList = view nameList appState
-    let projectPair = maybe noProject snd $ L.listSelectedElement myList
-    writeFile "/tmp/haskell_output" $ view projectPath projectPair
-
--- main = putStrLn "Hello, Haskell!"
--- main = tempDrawUi
+    let projectInfo = maybe noProject snd $ L.listSelectedElement myList
+    writeFile "/tmp/haskell_output" $ view projectPath projectInfo
