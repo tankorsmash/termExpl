@@ -43,6 +43,8 @@ import Data.Maybe (fromMaybe)
 
 type ProjectPair = (String, FilePath, String)
 
+type ReturnType = [Char]
+
 noProject :: ProjectPair
 noProject = ("No project selected", "", "")
 
@@ -66,7 +68,7 @@ drawList isSelected (projectName, projectPath, projectDescription) =
         then V.withAttr theBaseAttr (str $ " > " ++ projectName)
         else str $ "   " ++ projectName
 
-drawUI :: MyAppState () -> [Widget WidgetName]
+drawUI :: MyAppState ReturnType -> [Widget WidgetName]
 drawUI p = [ui]
   where
     progressPct = fromIntegral selectedIndex / fromIntegral totalEls
@@ -105,34 +107,18 @@ drawUI p = [ui]
                 <=> fromMaybe (str "None selected") formattedSelection
 
 
-submitSelection :: ProjectPair -> T.EventM WidgetName (MyAppState ()) ()
-submitSelection (projectName , projectPath, projectDescription) = do
-    liftIO $ print projectName
-    liftIO $ print projectName
-    liftIO $ print projectName
-    liftIO $ print projectName
-    liftIO $ print projectName
-    liftIO $ hFlush stdout
-    liftIO $ print projectName
-    liftIO $ hFlush stdout
-
-appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ()) ()
+appEvent :: T.BrickEvent WidgetName e -> T.EventM WidgetName (MyAppState ReturnType) ()
 appEvent (T.VtyEvent e) =
     case e of
         -- V.EvKey (V.KChar 'j') [] -> selectedIndex .= 1
         -- V.EvKey (V.KChar 'k') [] -> selectedIndex .= 0
         V.EvKey (V.KChar 'q') [] -> M.halt
         V.EvKey V.KEnter [] -> do
-                myList <- use nameList
-                let qwe  = maybe noProject snd $ L.listSelectedElement myList
-                _ <- submitSelection qwe
-                -- M.halt
-                return ()
-        -- V.EvKey V.KEnter [] -> submitSelection
+                M.halt
         evt -> T.zoom nameList $ L.handleListEventVi L.handleListEvent evt
 appEvent _ = return ()
 
-initialState :: MyAppState ()
+initialState :: MyAppState ReturnType
 initialState = MyAppState $ L.list Name1 (Vec.fromList projects) 1
 
 theBaseAttr :: A.AttrName
@@ -171,7 +157,7 @@ theMap =
         , (P.progressIncompleteAttr, fg V.yellow)
         ]
 
-theApp :: M.App (MyAppState ()) e WidgetName
+theApp :: M.App (MyAppState ReturnType) e WidgetName
 theApp =
     M.App
         { M.appDraw = drawUI
@@ -191,7 +177,11 @@ qwe = do
     V.update vty $ renderWidget Nothing (drawUI initialState) region
 
 main :: IO ()
-main = void $ M.defaultMain theApp initialState
+main = do
+    appState <- M.defaultMain theApp initialState
+    let myList = view nameList appState
+    let (projectName, projectPath, projectDescription)   = maybe noProject snd $ L.listSelectedElement myList
+    print projectPath
 
 -- main = putStrLn "Hello, Haskell!"
 -- main = qwe
