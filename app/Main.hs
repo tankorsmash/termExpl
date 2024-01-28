@@ -107,7 +107,7 @@ drawUI p = [V.withBorderStyle BS.unicodeRounded ui]
                     <=> str " "
                     <=> V.withAttr theBaseAttr (str $ view projectPath projectInfo)
                     <=> str " "
-                    <=> (V.withAttr selectedProjectDescription $ str $ view projectDescription projectInfo)
+                    <=> V.withAttr selectedProjectDescription (str $ view projectDescription projectInfo)
         )
             . snd
             <$> L.listSelectedElement theList
