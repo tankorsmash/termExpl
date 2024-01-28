@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -7,6 +8,7 @@ module Main where
 
 import System.IO (hFlush, stdout)
 
+import Control.Exception
 import Control.Monad (void)
 import Control.Monad.State (liftIO, modify)
 import qualified Data.Vector as Vec
@@ -43,24 +45,31 @@ import qualified Brick as V
 import Brick.Main (renderWidget)
 import Data.Maybe (fromMaybe)
 
+import Data.Aeson (FromJSON, ToJSON, decodeStrict, encode)
+import qualified Data.ByteString as BS
+import GHC.Generics (Generic)
+
 data ProjectInfo = ProjectInfo
     { _projectName :: !String
     , _projectPath :: !FilePath
     , _projectDescription :: !String
     }
+    deriving (Show, Generic)
+instance FromJSON ProjectInfo
+instance ToJSON ProjectInfo
 
 type ReturnType = [Char]
 
 noProject :: ProjectInfo
 noProject = ProjectInfo "No project selected" "" ""
 
-projects :: [ProjectInfo]
-projects =
-    [ ProjectInfo "weekend" "/home/joshb/code_wsl/haskell/weekend" "Haskell Discord Bot"
-    , ProjectInfo "uiua aoc" "/home/joshb/code_wsl/uiua/aoc_2023/" "Advent of Code 2023 in Uiua"
-    , ProjectInfo "zig" "/home/joshb/code_wsl/zig/test_zigg/" "An investigation into Zig"
-    , ProjectInfo "termExpl" "/home/joshb/code_wsl/haskell/termExpl/" "A project setup"
-    ]
+-- projects :: [ProjectInfo]
+-- projects =
+--     [ ProjectInfo "weekend" "/home/joshb/code_wsl/haskell/weekend" "Haskell Discord Bot"
+--     , ProjectInfo "uiua aoc" "/home/joshb/code_wsl/uiua/aoc_2023/" "Advent of Code 2023 in Uiua"
+--     , ProjectInfo "zig" "/home/joshb/code_wsl/zig/test_zigg/" "An investigation into Zig"
+--     , ProjectInfo "termExpl" "/home/joshb/code_wsl/haskell/termExpl/" "A project setup"
+--     ]
 
 -- data MyAppState n = MyAppState {_selectedIndex :: Int}
 newtype MyAppState n = MyAppState {_nameList :: L.List WidgetName ProjectInfo}
@@ -130,8 +139,8 @@ appEvent (T.VtyEvent e) =
         evt -> T.zoom nameList $ L.handleListEventVi L.handleListEvent evt
 appEvent _ = return ()
 
-initialState :: MyAppState ReturnType
-initialState = MyAppState $ L.list Name1 (Vec.fromList projects) 1
+initialState :: [ProjectInfo] -> MyAppState ReturnType
+initialState projects = MyAppState $ L.list Name1 (Vec.fromList projects) 1
 
 theBaseAttr :: A.AttrName
 theBaseAttr = A.attrName "theBase"
@@ -173,13 +182,30 @@ theApp =
 region :: V.DisplayRegion
 region = (30, 10)
 
-tempDrawUi = do
-    vty <- mkVty V.defaultConfig
-    V.update vty $ renderWidget Nothing (drawUI initialState) region
+-- tempDrawUi = do
+--     vty <- mkVty V.defaultConfig
+--     V.update vty $ renderWidget Nothing (drawUI initialState) region
+
+loadProjects :: IO [ProjectInfo]
+loadProjects = do
+    contentsResult :: Either IOError BS.ByteString <-
+        try $ BS.readFile "/home/joshb/code_wsl/haskell/termExpl/projects.json"
+    case contentsResult of
+        Right contents ->
+            case decodeStrict contents of
+                Just projects -> return projects
+                Nothing -> do
+                    print "no projects.json found, or it could not be parsed"
+                    return []
+        Left err -> do
+            print "no projects.json found"
+            return []
 
 main :: IO ()
 main = do
-    appState <- M.defaultMain theApp initialState
+    projects <- loadProjects
+    print projects
+    appState <- M.defaultMain theApp $ initialState projects
     let myList = view nameList appState
     let projectInfo = maybe noProject snd $ L.listSelectedElement myList
     writeFile "/tmp/haskell_output" $ view projectPath projectInfo
