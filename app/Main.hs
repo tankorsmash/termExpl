@@ -53,6 +53,7 @@ projects =
     [ ("weekend", "/home/joshb/code_wsl/haskell/weekend", "Haskell Discord Bot")
     , ("uiua aoc", "/home/joshb/code_wsl/uiua/aoc_2023/", "Advent of Code 2023 in Uiua")
     , ("zig", "/home/joshb/code_wsl/zig/test_zigg/", "An investigation into Zig")
+    , ("termExpl", "/home/joshb/code_wsl/haskell/termExpl/", "A project setup")
     ]
 
 -- data MyAppState n = MyAppState {_selectedIndex :: Int}
